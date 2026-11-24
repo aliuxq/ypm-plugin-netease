@@ -156,12 +156,23 @@ export async function api(path, data = {}, options = {}) {
   }
 
   // 退出登录后，旧的在途请求不能把已清除的会话写回来。
+  // 只在这条响应真的换了 Cookie 时才写：音乐库一次刷新会打好几个请求，
+  // 每个都写一遍 storage.json 是白白的磁盘开销。
   if (options.persist !== false && epoch() === (options.epoch ?? epoch())) {
-    const current = session();
-    for (const line of response.headers.getSetCookie()) {
-      Object.assign(current, parseCookie(line.split(";", 1)[0]));
+    const lines = response.headers.getSetCookie();
+    if (lines.length) {
+      const current = session();
+      let changed = false;
+      for (const line of lines) {
+        for (const [k, v] of Object.entries(parseCookie(line.split(";", 1)[0]))) {
+          if (current[k] !== v) {
+            current[k] = v;
+            changed = true;
+          }
+        }
+      }
+      if (changed) host.storage.set("cookies", current);
     }
-    host.storage.set("cookies", current);
   }
 
   return options.withCookies ? { result, cookies } : result;

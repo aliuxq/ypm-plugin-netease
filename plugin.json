@@ -1,7 +1,7 @@
 {
   "id": "netease",
   "name": "网易云音乐",
-  "version": "1.1.0",
+  "version": "1.2.4",
   "author": "aliuxq",
   "description": "网易云音乐音乐源：扫码登录，浏览歌单、每日推荐、私人 FM 与排行榜，播放你的红心歌曲和收藏专辑。非官方插件，仅请求网易云自己的接口，不提供解锁或下载。",
   "minAppVersion": "3.0.0",
@@ -36,8 +36,6 @@
   "navigation": [
     { "builtin": "home" },
     { "builtin": "liked" },
-    { "builtin": "savedAlbums" },
-    { "title": "我的云盘", "page": "cloud" },
-    { "title": "排行榜", "page": "charts" }
+    { "builtin": "savedAlbums" }
   ]
 }

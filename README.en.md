@@ -8,10 +8,10 @@ An **unofficial** NetEase Cloud Music source plugin for [YesPlayMusic](https://g
 
 ## Features
 
-- **Home**: Daily Mix, Personal FM, recommended playlists, new songs, new albums, charts
-- **Discover**: browse playlists by category, all charts, My cloud music
+- **Home**: Daily Mix and Personal FM hero cards, chart cards that list the top three tracks, recommended playlists, a new-album wall, new songs
+- **Discover**: playlist square (quick categories plus a five-group "More categories" panel), charts, new albums, My cloud music
 - **Search**: tracks, albums, artists, playlists, with suggestions and hot searches
-- **Library**: liked songs, saved albums, followed artists, recent plays, total plays
+- **Library**: liked songs (grouped by month by the date you added them), saved albums, playlists (with pinned "Daily Mix / Recently played / My cloud music" cards)
 - **Playlists**: create, rename, delete, add/remove tracks, subscribe to others' playlists
 - **Album / Artist pages**: save albums, follow artists, an artist's top songs, full discography and similar artists
 - **Playback**: Standard / High / Lossless / Hi-Res quality (with automatic fallback), lyrics and translations, similar songs, Personal FM
