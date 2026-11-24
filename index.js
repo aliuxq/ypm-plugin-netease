@@ -446,19 +446,18 @@ export async function album({ id }) {
 }
 
 export async function artist({ id }) {
-  const albumsAt = (offset) => twice(() => api(`/api/artist/albums/${id}`, { limit: 50, offset, total: true })).catch(() => ({}));
-  // 专辑接口较慢，前两页和歌手信息一起取，够大多数歌手用了。
+  // 专辑接口只取前两页（最多 100 张），并用较短超时：弱网下快速返回能拿到的数据，
+  // 而不是死等重试拖到调用超时。
+  const albumsAt = (offset) =>
+    api(`/api/artist/albums/${id}`, { limit: 50, offset, total: true }, { timeout: 8000 }).catch(() => ({}));
   const [d, first, second, sim] = await Promise.all([
     api(`/api/v1/artist/${id}`),
     albumsAt(0),
     albumsAt(50),
-    api("/api/discovery/simiArtist", { artistid: id }).catch(() => ({})),
+    api("/api/discovery/simiArtist", { artistid: id }, { timeout: 5000 }).catch(() => ({})),
   ]);
   if (!d.artist) throw new Error(t("找不到这位歌手"));
-  let discs = (first.hotAlbums || []).concat(second.hotAlbums || []);
-  if (second.more) {
-    for (const r of await Promise.all([100, 150].map(albumsAt))) discs = discs.concat(r.hotAlbums || []);
-  }
+  const discs = (first.hotAlbums || []).concat(second.hotAlbums || []);
   const seen = new Set();
   const albums = [];
   for (const x of discs) {

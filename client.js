@@ -121,7 +121,7 @@ export async function api(path, data = {}, options = {}) {
         Cookie: encodeCookie({ ...jar, ...header, NMTID: jar.NMTID || "" }),
       },
       body,
-      signal: AbortSignal.timeout(TIMEOUT),
+      signal: AbortSignal.timeout(options.timeout ?? TIMEOUT),
     });
   } catch (e) {
     fail("failed", t("连不上网易云音乐，请检查网络后重试"), true);
