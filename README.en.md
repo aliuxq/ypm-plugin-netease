@@ -67,14 +67,14 @@ The plugin does not spawn local programs and does not read or write files outsid
 - **Does not unlock any content.** Songs without copyright (grayed out) and separately-purchased digital albums cannot be played; VIP songs require your account to be a VIP. Preview-only clips are marked unplayable rather than passed off as full tracks.
 - The artist discography API is slow; artists with very large catalogs take a few seconds (up to 200 albums shown).
 - Playlist drag-to-reorder (`movePlaylistTrack`), podcasts, and word-by-word lyrics are not implemented.
-- **Do not open the "Artists" tab of the Library when you have many songs.** It lays out every artist found in your songs as an avatar bubble (400+ is normal) and each one downloads its own image, so the page gets noticeably slow. The tab is hard-coded in the app; the plugin cannot remove it or change how it is drawn.
+- **Do not open the "Artists" tab of the Library when you have many songs.** It lays out every artist found in your songs as an avatar bubble (hundreds is normal) and each one downloads its own image, so the page gets noticeably slow. The tab is hard-coded in the app; the plugin cannot remove it or change how it is drawn.
 - NetEase's API is unofficial and may change or add risk-control measures at any time, which could break the plugin.
 
 ### Performance
 
-On the test machine (2026-11, 3.0.0.30000, 531 liked songs and 51 playlists) everything except the Artists tab stays smooth:
+With a library of a few hundred songs and a few dozen playlists, everything except the Artists tab stays smooth:
 
-- Home 389 ms, Discover 372 ms, Charts page 372 ms.
+- Home, Discover and the Charts page all return within a few hundred milliseconds.
 - Switching Library tabs makes the app re-fetch the whole library (at most once per 30 s). The plugin caches liked songs, the playlist list and the cloud card for 45–60 s, which brings that step down from ~950 ms to ~56 ms.
 - Playlists, albums, search, playback, lyrics and comments showed no lag.
 
