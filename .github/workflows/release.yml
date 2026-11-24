@@ -1,0 +1,31 @@
+# 打 tag（形如 v1.0.0）时，把插件运行所需文件打包成 zip 上传到 Release，
+# 方便用户通过「安装插件 → 粘贴 github.com/<用户名>/ypm-plugin-netease」一键安装。
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package plugin
+        run: |
+          mkdir -p dist
+          zip -r "dist/ypm-plugin-netease-${{ github.ref_name }}.zip" \
+            plugin.json index.js client.js models.js i18n.js icon.png locales \
+            -x '*.DS_Store'
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

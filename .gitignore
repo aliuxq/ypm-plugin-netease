@@ -1,0 +1,8 @@
+# 测试产生的本地状态
+test/.storage.json
+
+# 依赖与系统文件
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
