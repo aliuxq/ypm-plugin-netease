@@ -110,4 +110,6 @@ node test/harness.mjs playlist '{"id":"3778678"}'
 
 ## 协议
 
+本项目基于 lymzzyh/ypm-plugin-netease 与 limnea/ypm-plugin-netease（均为 MIT License）改编，详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+
 [MIT](./LICENSE)
