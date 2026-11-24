@@ -70,6 +70,18 @@ On the test machine (2026-11, 3.0.0.30000, 531 liked songs and 51 playlists) eve
 
 Windows native crashes have also been observed (`0xc0000374` heap corruption / `BEX64` / `0xc0000005` in the event log). They predate this plugin's changes and are unrelated to it; include those codes when reporting upstream.
 
+## Changelog
+
+### v1.3.0 (2026-11-25)
+
+- **Listening history**: a new card on Discover, grouped by day for the last 7 days, with a "most played this week" view.
+- **Profile**: level and Vinyl VIP badges, following / followers / year joined, three stat cards, and your five most-played artists this week.
+- **Song info (right-click)**: opens a page with release date, album and track number, label, length, aliases, and an inferred version (Live / instrumental / ...).
+- **Configurable Discover tabs**: three presets, or order and rename them with `pl` / `listens` / `charts` / `new` / `cloud`.
+- **Known issue**: with a large library, opening the Library "Artists" tab is slow; that tab is hard-coded in the app and cannot be removed by a plugin.
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full history.
+
 ## Development
 
 ```
