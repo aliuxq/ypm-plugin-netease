@@ -199,34 +199,61 @@ export async function signOut() {
 
 export async function profile() {
   const uid = await myId();
-  const [r, lists, week] = await Promise.all([
+  const [r, lists, week, albums] = await Promise.all([
     api(`/api/v1/user/detail/${uid}`),
     rawPlaylists(uid),
     api("/api/v1/play/record", { uid, type: 1 }).catch(() => null), // 最近一周听得最多
+    api("/api/album/sublist", { limit: 1, offset: 0, total: true }).catch(() => null), // 只要数量
   ]);
   const p = r.profile || {};
   const mine = (lists || []).map((x) => model.playlist(x, uid)).filter((x) => x.mine);
-  const top = (week?.weekData || [])
+  const weekData = week?.weekData || [];
+  const top = weekData
     .slice(0, 20)
     .map((x) => {
       const tr = trackOf(x.song);
       return tr ? { ...tr, plays: x.playCount || 0 } : null;
     })
     .filter(Boolean);
+
+  // 本周最常听的歌手：把一周榜单里每首歌的播放次数按歌手汇总。
+  const byArtist = new Map();
+  for (const x of weekData) {
+    const plays = Number(x.playCount) || 0;
+    for (const a of x.song?.ar || []) {
+      if (!a?.name) continue;
+      const key = String(a.id || a.name);
+      const cur = byArtist.get(key) || { artist: model.artist(a), plays: 0 };
+      cur.plays += plays;
+      byArtist.set(key, cur);
+    }
+  }
+  const topArtists = [...byArtist.values()].sort((a, b) => b.plays - a.plays).slice(0, 5);
+
+  const badges = [];
+  if (r.level) badges.push(`Lv.${r.level}`);
+  if (Number(p.vipType) > 0) badges.push(t("黑胶 VIP"));
+
+  const facts = [
+    { label: t("关注"), value: String(p.follows ?? 0) },
+    { label: t("粉丝"), value: String(p.followeds ?? 0) },
+  ];
+  if (p.createTime) facts.push({ label: t("加入"), value: `${new Date(p.createTime).getFullYear()} 年` });
+
   return {
     name: p.nickname || me.name,
-    imageUrl: p.avatarUrl || undefined,
+    imageUrl: p.avatarUrl ? String(p.avatarUrl).replace(/^http:/, "https:") : undefined,
     signature: p.signature || undefined,
-    badges: r.level ? [`Lv.${r.level}`] : [],
-    facts: [
-      { label: t("关注"), value: String(p.follows ?? 0) },
-      { label: t("粉丝"), value: String(p.followeds ?? 0) },
-    ],
+    badges,
+    facts,
+    // 宿主最多画三张统计卡，点进去分别跳到音乐库对应的标签。
     stats: [
-      { label: t("累计听歌"), value: r.listenSongs ?? 0, link: "songs" },
-      { label: t("歌单"), value: mine.length, link: "playlists" },
+      { label: t("累计听歌"), value: r.listenSongs ?? 0, unit: t("首"), link: "songs" },
+      { label: t("收藏专辑"), value: albums?.count ?? 0, link: "albums" },
+      { label: t("我的歌单"), value: mine.length, link: "playlists" },
     ],
-    topTracks: top.length ? { title: t("最近一周最常听"), tracks: top } : undefined,
+    topArtists: topArtists.length ? topArtists : undefined,
+    topTracks: top.length ? { title: t("本周最常听"), tracks: top } : undefined,
     playlists: mine,
   };
 }
@@ -310,21 +337,85 @@ const GROUPS = [
 
 const QUICK = ["华语", "欧美", "日语", "流行", "摇滚", "民谣", "电子"];
 const PL_ALL = "pl:全部";
+const LISTENS = "listens";
 const CLOUD_PAGE = 200;
 
 const catOf = (page) => (!page || page === PL_ALL ? "全部" : page.slice(3));
+
+// ── 发现页顶部栏目（可以在插件设置里改顺序、改名、增减） ──
+//
+// 宿主的栏目栏不接受用户拖动，插件也不能往界面加控件；但栏目本身是插件给的
+// tabs，所以把「显示哪几个、什么顺序、叫什么」做成设置项是可行的。
+const TAB_DEFS = {
+  pl: { title: () => t("歌单广场"), page: () => PL_ALL, needsSignIn: false },
+  listens: { title: () => t("听歌记录"), page: () => LISTENS, needsSignIn: true },
+  charts: { title: () => t("排行榜"), page: () => "charts", needsSignIn: false },
+  new: { title: () => t("新碟上架"), page: () => "new", needsSignIn: false },
+  cloud: { title: () => t("我的云盘"), page: () => "cloud", needsSignIn: true },
+};
+
+const TAB_PRESETS = {
+  "": ["pl", "listens", "charts", "new", "cloud"],
+  compact: ["pl", "charts"],
+  mine: ["pl", "listens", "cloud"],
+};
+
+// 把设置读成 [{ key, name }]；不认识的名字直接跳过，写错不会让发现页变空。
+function tabSpec() {
+  const preset = String(host.setting("tabs") || "");
+  if (preset !== "custom") {
+    return (TAB_PRESETS[preset] || TAB_PRESETS[""]).map((key) => ({ key, name: "" }));
+  }
+  const raw = String(host.setting("tabOrder") || "").trim();
+  if (!raw) return TAB_PRESETS[""].map((key) => ({ key, name: "" }));
+  return raw
+    .split(/[,，;；\n]+/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => {
+      const i = x.indexOf("=");
+      return i > 0 ? { key: x.slice(0, i).trim().toLowerCase(), name: x.slice(i + 1).trim() } : { key: x.toLowerCase(), name: "" };
+    });
+}
 
 // 顶部导航必须每一页都带上：宿主的 tab 栏是用「当前这一页」的返回值画的，
 // 少了它翻到二级页就只剩内容、没有回去了。
 function bars(page, count = 0) {
   const signed = loggedIn();
   const onPl = !page || page.startsWith("pl:");
-  const tabs = [
-    { title: t("歌单广场"), page: PL_ALL, selected: onPl },
-    { title: t("排行榜"), page: "charts", selected: page === "charts" },
-    { title: t("新碟上架"), page: "new", selected: page === "new" },
-  ];
-  if (signed) tabs.push({ title: t("我的云盘"), page: "cloud", selected: String(page).startsWith("cloud") });
+  const onListens = String(page).startsWith(LISTENS);
+
+  const on = (key, pageOf) => {
+    if (key === "pl") return onPl;
+    if (key === "listens") return onListens;
+    if (key === "cloud") return String(page).startsWith("cloud");
+    return String(page) === pageOf;
+  };
+
+  const tabs = [];
+  for (const spec of tabSpec()) {
+    const def = TAB_DEFS[spec.key];
+    if (!def) continue;
+    if (def.needsSignIn && !signed) continue;
+    const target = def.page();
+    tabs.push({ title: spec.name || def.title(), page: target, selected: on(spec.key, target) });
+  }
+  // 一个都没剩（比如全写错了）：至少把默认页的入口给回去。
+  if (!tabs.length) tabs.push({ title: t("歌单广场"), page: PL_ALL, selected: onPl });
+
+  // 听歌记录：网易云只回最近 300 次播放，翻不了更早，所以只有「按天」和「本周最常听」两个视图。
+  if (onListens) {
+    const week = String(page) === `${LISTENS}:week`;
+    return {
+      tabs,
+      filters: [
+        [
+          { title: t("按天"), page: LISTENS, selected: !week },
+          { title: t("本周最常听"), page: `${LISTENS}:week`, selected: week },
+        ],
+      ],
+    };
+  }
 
   if (onPl) {
     const cat = catOf(page);
@@ -364,8 +455,48 @@ function bars(page, count = 0) {
   return { tabs };
 }
 
+// 听歌记录的时间戳是 UTC 毫秒，按北京时间分天。
+const TZ = 8 * 3600 * 1000;
+
+function dayOf(ms) {
+  const d = new Date(ms + TZ);
+  return { key: d.toISOString().slice(0, 10), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+}
+
+function dayLabel(g) {
+  const today = dayOf(Date.now());
+  const yesterday = dayOf(Date.now() - 86400000);
+  const tail = g.key === today.key ? ` · ${t("今天")}` : g.key === yesterday.key ? ` · ${t("昨天")}` : "";
+  const zh = String(host.language() || "zh").toLowerCase().startsWith("zh");
+  return `${zh ? `${g.m}月${g.d}日` : g.key}${tail}`;
+}
+
 export async function browse({ page } = {}) {
   const p = String(page || "");
+
+  // 听歌记录：按天分组的播放历史；另一个视图是本周播放次数排行。
+  if (p === LISTENS || p === `${LISTENS}:week`) {
+    if (p === `${LISTENS}:week`) {
+      const uid = await myId();
+      const r = await api("/api/v1/play/record", { uid, type: 1 });
+      const tracks = (r.weekData || []).map((x) => trackOf(x.song)).filter(Boolean);
+      if (!tracks.length) throw new Error(t("这里还没有内容"));
+      return { ...bars(p), sections: [{ title: `${t("本周最常听")} · ${tracks.length}`, tracks }] };
+    }
+    const info = await recentInfo(true);
+    const byDay = new Map();
+    for (const it of info.items) {
+      const g = dayOf(it.at);
+      if (!byDay.has(g.key)) byDay.set(g.key, { ...g, tracks: [] });
+      byDay.get(g.key).tracks.push(it.track);
+    }
+    const days = [...byDay.values()].sort((a, b) => (a.key < b.key ? 1 : -1));
+    if (!days.length) throw new Error(t("这里还没有内容"));
+    return {
+      ...bars(p),
+      sections: days.map((g) => ({ title: `${dayLabel(g)} · ${g.tracks.length}`, tracks: g.tracks })),
+    };
+  }
 
   if (p === "charts") {
     const r = await api("/api/toplist");
@@ -553,8 +684,12 @@ let recentCache = null;
 async function recentInfo(force = false) {
   if (!force && recentCache && Date.now() - recentCache.at < 300_000) return recentCache;
   const r = await api("/api/play-record/song/list", { limit: 300 });
-  const tracks = (r.data?.list || []).map((x) => trackOf(x.data)).filter(Boolean);
-  recentCache = { at: Date.now(), tracks, total: Number(r.data?.total) || tracks.length };
+  const items = [];
+  for (const x of r.data?.list || []) {
+    const track = trackOf(x.data);
+    if (track) items.push({ track, at: Number(x.playTime) || 0 });
+  }
+  recentCache = { at: Date.now(), items, tracks: items.map((x) => x.track), total: Number(r.data?.total) || items.length };
   return recentCache;
 }
 
@@ -751,6 +886,24 @@ async function playlistDetail(id) {
 }
 
 export async function playlist({ id }) {
+  // 右键「歌曲信息」打开的伪歌单：一个页面装一首歌 + 多行简介。
+  if (String(id).startsWith(INFO_PREFIX)) {
+    const d = await songDetail(String(id).slice(INFO_PREFIX.length));
+    const tr = d.track;
+    return {
+      id,
+      name: d.song.name,
+      description: d.lines.join("\n"),
+      owner: (d.song.ar || []).map((a) => a.name).join(" / "),
+      imageUrl: tr?.album?.imageUrl,
+      trackCount: 1,
+      mine: false,
+      saved: false,
+      fixed: true,
+      tracks: tr ? [tr] : [],
+    };
+  }
+
   if (loggedIn()) await myId().catch(() => {}); // 需要知道「我」是谁才能判断是不是自己的歌单
 
   // 音乐库里的系统歌单：点开时现取，歌单列表里只放卡片所需的信息。
@@ -910,11 +1063,79 @@ export async function likeComment({ id, commentId, on }) {
 
 // ── 歌曲右键菜单 ──
 
-export function trackMenu() {
-  return [{ id: "open-netease", title: t("在网易云音乐网页打开") }];
+// ── 歌曲信息（右键） ──
+//
+// 播放页的四个栏目（歌词 / 评论 / 队列 / 相似）在宿主里是固定的枚举值，插件加不了
+// 第五个；但播放页和所有列表都挂了歌曲右键菜单，所以「歌曲信息」只能从这里进。
+// 网易云没有「录音室 / 现场」这种字段，版本是按歌名、专辑名、别名里的关键词推的。
+
+const INFO_ACTION = "song-info";
+const INFO_PREFIX = "info-";
+
+const VERSION_HINTS = [
+  [/(unplugged|不插电|不插電)/i, "不插电"],
+  [/(\blive\b|现场|現場|演唱会|演唱會)/i, "现场版"],
+  [/(instrumental|karaoke|off ?vocal|伴奏|纯音乐|純音樂)/i, "伴奏 / 纯音乐"],
+  [/(acoustic|原声版|原聲版)/i, "原声版"],
+  [/(remix|混音)/i, "混音版"],
+  [/(\bdemo\b)/i, "Demo"],
+  [/(cover|翻唱)/i, "翻唱"],
+];
+
+function versionOf(s) {
+  const text = [s.name, s.al?.name, ...(s.alia || []), ...(s.tns || [])].filter(Boolean).join(" ");
+  for (const [re, label] of VERSION_HINTS) if (re.test(text)) return t(label);
+  return "";
 }
 
-export function menuAction({ id: action, track }) {
+function dateText(ms) {
+  if (typeof ms !== "number" || !ms) return "";
+  const d = new Date(ms + 8 * 3600 * 1000); // 网易云的日期是北京时间零点
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+}
+
+async function songDetail(id) {
+  const r = await api("/api/v3/song/detail", { c: JSON.stringify([{ id: Number(id) }]) });
+  const s = (r.songs || [])[0];
+  if (!s) throw new Error(t("找不到这首歌的信息"));
+
+  // 唱片公司只有专辑接口里有，取不到就不写这一行。
+  const albumDetail = s.al?.id
+    ? await api(`/api/v1/album/${s.al.id}`, {}, { timeout: 6000 }).catch(() => null)
+    : null;
+  const company = albumDetail?.album?.company || "";
+  const version = versionOf(s);
+  const release = dateText(s.publishTime);
+  const alias = [...(s.alia || []), ...(s.tns || [])].filter(Boolean);
+  const mm = s.dt ? `${Math.floor(s.dt / 60000)}:${String(Math.floor((s.dt % 60000) / 1000)).padStart(2, "0")}` : "";
+
+  const lines = [
+    release ? `${t("发行")}：${release}` : "",
+    s.al?.name ? `${t("专辑")}：《${s.al.name}》${s.no ? ` · #${s.no}` : ""}` : "",
+    version ? `${t("版本")}：${version}（${t("据名称判断")}）` : "",
+    company ? `${t("唱片公司")}：${company}` : "",
+    mm ? `${t("时长")}：${mm}` : "",
+    alias.length ? `${t("别名")}：${alias.join(" / ")}` : "",
+    s.mv ? `MV：https://music.163.com/mv?id=${s.mv}` : "",
+    `https://music.163.com/song?id=${s.id}`,
+  ].filter(Boolean);
+
+  return { song: s, lines, track: trackOf(s) };
+}
+
+export function trackMenu() {
+  return [
+    { id: INFO_ACTION, title: t("歌曲信息"), icon: "info" },
+    { id: "open-netease", title: t("在网易云音乐网页打开") },
+  ];
+}
+
+export async function menuAction({ id: action, track }) {
+  // 弹一行提示或只进剪贴板都不够用，改成打开一个真正的页面：
+  // 歌单详情页会把 description 渲染成可展开的简介文本，正好拿来放歌曲信息。
+  if (action === INFO_ACTION) {
+    return { open: { kind: "playlist", id: `${INFO_PREFIX}${track.id}` } };
+  }
   if (action !== "open-netease") fail("unsupported", "未知的菜单操作");
   host.openURL(`https://music.163.com/song?id=${track.id}`);
   return {};

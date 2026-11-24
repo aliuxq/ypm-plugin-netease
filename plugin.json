@@ -1,7 +1,7 @@
 {
   "id": "netease",
   "name": "网易云音乐",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "author": "aliuxq",
   "description": "网易云音乐音乐源：扫码登录，浏览歌单、每日推荐、私人 FM 与排行榜，播放你的红心歌曲和收藏专辑。非官方插件，仅请求网易云自己的接口，不提供解锁或下载。",
   "minAppVersion": "3.0.0",
@@ -31,6 +31,24 @@
       "type": "password",
       "help": "扫码登录被风控拦截时使用：在浏览器登录 music.163.com，把 Cookie 里 MUSIC_U 的值（或整段 Cookie）粘贴到这里，再点一次登录。填了就优先使用它。",
       "link": "https://music.163.com/"
+    },
+    {
+      "key": "tabs",
+      "label": "发现页栏目",
+      "type": "select",
+      "help": "决定发现页顶部显示哪几个栏目。选「自定义」时按下面「自定义栏目」里写的内容排。改完点一次「重新加载」生效。",
+      "options": [
+        { "value": "", "label": "默认（五个都显示）" },
+        { "value": "compact", "label": "精简（歌单广场 / 排行榜）" },
+        { "value": "mine", "label": "我的（歌单广场 / 听歌记录 / 我的云盘）" },
+        { "value": "custom", "label": "自定义（按下面那栏）" }
+      ]
+    },
+    {
+      "key": "tabOrder",
+      "label": "自定义栏目（选了「自定义」才用）",
+      "type": "text",
+      "help": "用逗号分隔，可以用的键：pl 歌单广场、listens 听歌记录、charts 排行榜、new 新碟上架、cloud 我的云盘。顺序就是显示顺序。想改名写成「键=名字」，例如：pl=歌单, charts=榜单, new=新碟。写错的键会被忽略。"
     }
   ],
   "navigation": [

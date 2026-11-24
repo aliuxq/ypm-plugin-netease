@@ -9,16 +9,19 @@ An **unofficial** NetEase Cloud Music source plugin for [YesPlayMusic](https://g
 ## Features
 
 - **Home**: Daily Mix and Personal FM hero cards, chart cards that list the top three tracks, recommended playlists, a new-album wall, new songs
-- **Discover**: playlist square (quick categories plus a five-group "More categories" panel), charts, new albums, My cloud music
+- **Discover**: playlist square (quick categories plus a five-group "More categories" panel), listening history (by day / most played this week), charts, new albums, My cloud music
 - **Search**: tracks, albums, artists, playlists, with suggestions and hot searches
 - **Library**: liked songs (grouped by month by the date you added them), saved albums, playlists (with pinned "Daily Mix / Recently played / My cloud music" cards)
 - **Playlists**: create, rename, delete, add/remove tracks, subscribe to others' playlists
 - **Album / Artist pages**: save albums, follow artists, an artist's top songs, full discography and similar artists
 - **Playback**: Standard / High / Lossless / Hi-Res quality (with automatic fallback), lyrics and translations, similar songs, Personal FM
 - **Comments**: hot and latest comments, post, reply, like
-- **Profile**: level, following/followers, total plays, most-played this week
+- **Profile**: level and Vinyl VIP badge, following / followers / year joined, three stat cards, your five most-played artists and most-played tracks this week
+- **Right-click menu**: song info (release date, album, label, inferred version) and open on the NetEase website
 - Automatically reports listening history after playback
 - UI text in Simplified Chinese, Traditional Chinese and English
+
+The tabs at the top of the Discover page are configurable in **Settings → Plugins → NetEase Cloud Music → Plugin settings**: pick a preset, or choose "Custom" and order/rename them with the keys `pl` / `listens` / `charts` / `new` / `cloud`. Reload the plugin afterwards.
 
 ## Installation
 
@@ -54,7 +57,18 @@ The plugin does not spawn local programs and does not read or write files outsid
 - **Does not unlock any content.** Songs without copyright (grayed out) and separately-purchased digital albums cannot be played; VIP songs require your account to be a VIP. Preview-only clips are marked unplayable rather than passed off as full tracks.
 - The artist discography API is slow; artists with very large catalogs take a few seconds (up to 200 albums shown).
 - Playlist drag-to-reorder (`movePlaylistTrack`), podcasts, and word-by-word lyrics are not implemented.
+- **Do not open the "Artists" tab of the Library when you have many songs.** It lays out every artist found in your songs as an avatar bubble (400+ is normal) and each one downloads its own image, so the page gets noticeably slow. The tab is hard-coded in the app; the plugin cannot remove it or change how it is drawn.
 - NetEase's API is unofficial and may change or add risk-control measures at any time, which could break the plugin.
+
+### Performance
+
+On the test machine (2026-11, 3.0.0.30000, 531 liked songs and 51 playlists) everything except the Artists tab stays smooth:
+
+- Home 389 ms, Discover 372 ms, Charts page 372 ms.
+- Switching Library tabs makes the app re-fetch the whole library (at most once per 30 s). The plugin caches liked songs, the playlist list and the cloud card for 45–60 s, which brings that step down from ~950 ms to ~56 ms.
+- Playlists, albums, search, playback, lyrics and comments showed no lag.
+
+Windows native crashes have also been observed (`0xc0000374` heap corruption / `BEX64` / `0xc0000005` in the event log). They predate this plugin's changes and are unrelated to it; include those codes when reporting upstream.
 
 ## Development
 
