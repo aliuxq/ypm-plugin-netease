@@ -10,16 +10,26 @@ An **unofficial** NetEase Cloud Music source plugin for [YesPlayMusic](https://g
 
 - **Home**: Daily Mix and Personal FM hero cards, chart cards that list the top three tracks, recommended playlists, a new-album wall, new songs
 - **Discover**: playlist square (quick categories plus a five-group "More categories" panel), listening history (by day / most played this week), charts, new albums, My cloud music
-- **Search**: tracks, albums, artists, playlists, with suggestions and hot searches
+- **Search**: tracks, albums, artists, playlists, and hot search words
 - **Library**: liked songs (grouped by month by the date you added them), saved albums, playlists (with pinned "Daily Mix / Recently played / My cloud music" cards)
-- **Playlists**: create, rename, delete, add/remove tracks, subscribe to others' playlists
+- **Playlists**: create, add tracks, remove tracks
 - **Album / Artist pages**: save albums, follow artists, an artist's top songs, full discography and similar artists
 - **Playback**: Standard / High / Lossless / Hi-Res quality (with automatic fallback), lyrics and translations, similar songs, Personal FM
-- **Comments**: hot and latest comments, post, reply, like
-- **Profile**: level and Vinyl VIP badge, following / followers / year joined, three stat cards, your five most-played artists and most-played tracks this week
+- **Comments**: hot and latest comments, post, like
 - **Right-click menu**: song info (release date, album, label, inferred version) and open on the NetEase website
-- Automatically reports listening history after playback
 - UI text in Simplified Chinese, Traditional Chinese and English
+
+### Features the app gives no entry point for
+
+These are implemented in the plugin, but YesPlayMusic 3.0.0 has no button or menu that reaches them, so they cannot be used from the UI:
+
+| Plugin capability | Why it is not visible |
+| --- | --- |
+| Profile page (level, Vinyl VIP, followers, stats, top artists and tracks) | The page exists in the app, but nothing navigates to it |
+| Subscribing to someone else's playlist | The app never calls that operation |
+| Renaming / deleting your own playlists | Same |
+| Search suggestions | The app only shows hot searches |
+| Reporting listening history after playback | The app never notifies the plugin when a track finishes |
 
 The tabs at the top of the Discover page are configurable in **Settings → Plugins → NetEase Cloud Music → Plugin settings**: pick a preset, or choose "Custom" and order/rename them with the keys `pl` / `listens` / `charts` / `new` / `cloud`. Reload the plugin afterwards.
 
@@ -38,7 +48,7 @@ Alternatively, download the zip from [Releases](https://github.com/aliuxq/ypm-pl
 
 ## Sign in
 
-Click the avatar at the bottom left → Sign in, scan the QR code with the NetEase Cloud Music app and confirm on your phone.
+Go to **Settings → Plugins → NetEase Cloud Music** and click Sign in in the account row, then scan the QR code with the NetEase Cloud Music app and confirm on your phone. (Clicking the bottom-left avatar switches music sources, it is not the sign-in entry.)
 
 If QR sign-in is blocked by NetEase's risk control: sign in at [music.163.com](https://music.163.com/) in a browser, press F12 → Application → Cookies, copy the `MUSIC_U` value, and paste it into **Settings → Plugins → NetEase Cloud Music → Plugin settings** under Cookie, then click Sign in once. When set, it takes priority.
 
@@ -75,7 +85,7 @@ Windows native crashes have also been observed (`0xc0000374` heap corruption / `
 ### v1.3.0 (2026-11-25)
 
 - **Listening history**: a new card on Discover, grouped by day for the last 7 days, with a "most played this week" view.
-- **Profile**: level and Vinyl VIP badges, following / followers / year joined, three stat cards, and your five most-played artists this week.
+- **Profile (not reachable in the app)**: level and Vinyl VIP badges, following / followers / year joined, three stat cards, and your five most-played artists this week — the app has no entry point to that page.
 - **Song info (right-click)**: opens a page with release date, album and track number, label, length, aliases, and an inferred version (Live / instrumental / ...).
 - **Configurable Discover tabs**: three presets, or order and rename them with `pl` / `listens` / `charts` / `new` / `cloud`.
 - **Known issue**: with a large library, opening the Library "Artists" tab is slow; that tab is hard-coded in the app and cannot be removed by a plugin.
