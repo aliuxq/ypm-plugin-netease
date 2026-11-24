@@ -24,8 +24,20 @@ jobs:
             plugin.json index.js client.js models.js i18n.js icon.png locales \
             -x '*.DS_Store'
 
+      # Release 正文取自 CHANGELOG.md 里本版本那一段，而不是 GitHub 自动生成的
+      # 一行 compare 链接（那样发布页上看不到更新内容）。
+      - name: Extract changelog
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v head="## v${ver}" 'index($0, head) == 1 { on = 1; next } on && /^## v/ { exit } on' CHANGELOG.md > dist/notes.md
+          if [ ! -s dist/notes.md ]; then
+            echo "本版本暂无更新日志，详见 [CHANGELOG.md](../blob/main/CHANGELOG.md)。" > dist/notes.md
+          fi
+          echo "--- 发布正文预览 ---"
+          head -5 dist/notes.md
+
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
-          generate_release_notes: true
+          body_path: dist/notes.md
