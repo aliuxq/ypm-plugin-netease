@@ -24,20 +24,30 @@ jobs:
             plugin.json index.js client.js models.js i18n.js icon.png locales \
             -x '*.DS_Store'
 
-      # Release 正文取自 CHANGELOG.md 里本版本那一段，而不是 GitHub 自动生成的
-      # 一行 compare 链接（那样发布页上看不到更新内容）。
-      - name: Extract changelog
+      # Release 正文 = 本版本更新日志（给用户看）+ 技术说明（给开发者看）。
+      # 技术说明直接取 DEVELOPMENT.md 的正文，免得两处内容各写一份、以后对不上。
+      - name: Compose release notes
         run: |
           ver="${GITHUB_REF_NAME#v}"
-          awk -v head="## v${ver}" 'index($0, head) == 1 { on = 1; next } on && /^## v/ { exit } on' CHANGELOG.md > dist/notes.md
-          if [ ! -s dist/notes.md ]; then
-            echo "本版本暂无更新日志，详见 [CHANGELOG.md](../blob/main/CHANGELOG.md)。" > dist/notes.md
+          awk -v head="## v${ver}" 'index($0, head) == 1 { on = 1; next } on && /^## v/ { exit } on' CHANGELOG.md > dist/changelog.md
+          if [ ! -s dist/changelog.md ]; then
+            echo "本版本暂无更新日志，见 [CHANGELOG.md](../blob/main/CHANGELOG.md)。" > dist/changelog.md
           fi
-          echo "--- 发布正文预览 ---"
-          head -5 dist/notes.md
+          {
+            cat dist/changelog.md
+            if [ -f DEVELOPMENT.md ]; then
+              printf '\n---\n\n## 技术说明\n\n'
+              sed '1,2d' DEVELOPMENT.md      # 去掉文件自己的 "# 开发说明" 标题
+            fi
+          } > dist/body.raw.md
+          # 相对链接在发布页里点不开，统一改成仓库里的绝对地址
+          sed -E "s|\]\(([A-Za-z0-9_./-]+\.md)\)|](https://github.com/${GITHUB_REPOSITORY}/blob/main/\1)|g" \
+            dist/body.raw.md | sed 's|/blob/main/\./|/blob/main/|g' > dist/body.md
+          echo "--- 发布正文预览（前 12 行）---"
+          head -12 dist/body.md
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
-          body_path: dist/notes.md
+          body_path: dist/body.md
